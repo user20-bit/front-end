@@ -2,16 +2,28 @@
 
 Prototipo para explorar oportunidades de contratación pública en Perú, revisar evidencias, estimar costos y preparar borradores de oferta. El catálogo, las bases y los antecedentes son ficticios. El perfil, las preferencias de alertas, las evidencias, los costos y los favoritos se guardan en el navegador.
 
+## Estructura
+
+- `frontend/src/` contiene el código web. `frontend/dist/` se genera al compilar y se publica en Vercel.
+- `backend/` contiene la API y el catálogo de demostración. Render ejecuta este directorio como un servicio Node.js.
+- `scripts/` contiene el arranque conjunto para desarrollo local.
+
 ## Desarrollo local
 
-Usa Node.js 22. Desde la raíz, ejecuta cada comando en una terminal distinta.
+Usa Node.js 22. Ejecuta estos comandos desde la raíz del repositorio.
 
-```sh
-npm --prefix backend start
-npm --prefix frontend run dev
+```powershell
+npm install
+npm run dev
 ```
 
-Abre `http://127.0.0.1:5173`. La API usa `http://localhost:3001` y puede usar otro puerto mediante `PORT`. Si cambias la dirección de la API, configura `PUBLIC_API_URL` antes de iniciar el frontend; la variable se lee durante la compilación.
+Abre `http://127.0.0.1:5173`. El mismo comando inicia la API en `http://localhost:3001`. Recarga la página para ver los cambios en los archivos del frontend. Pulsa `Ctrl+C` para detener ambos servicios.
+
+- `npm run dev:frontend` y `npm run dev:backend` inician cada servicio por separado.
+- `npm run build` genera `frontend/dist/`. La API se ejecuta directamente con Node.js.
+- `npm run preview` sirve el frontend compilado en `http://127.0.0.1:5173`. Para probarlo con la API local, ejecuta `npm run dev:backend` en otra terminal.
+
+`PORT` cambia el puerto de la API. `PUBLIC_API_URL` indica el origen de la API que consume el frontend. Se lee al iniciar el modo desarrollo o al ejecutar `npm run build`. Si pruebas una compilación con un puerto distinto de `3001`, define `$env:PUBLIC_API_URL` antes de compilar.
 
 ## Despliegue
 

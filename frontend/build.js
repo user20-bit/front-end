@@ -1,8 +1,8 @@
 import {cp, writeFile} from 'node:fs/promises';
+import {clientConfig} from './config.js';
 
-const api = new URL(process.env.PUBLIC_API_URL || 'http://localhost:3001');
-if (!['http:', 'https:'].includes(api.protocol) || api.username || api.password || api.pathname !== '/' || api.search || api.hash) {
-  throw new Error('PUBLIC_API_URL debe contener solo el origen HTTP(S) de la API');
-}
-await cp('src','dist',{recursive:true});
-await writeFile('dist/config.js',`export const apiOrigin = ${JSON.stringify(api.origin)};\n`);
+const config = clientConfig();
+const destination = new URL('./dist/', import.meta.url);
+await cp(new URL('./src/', import.meta.url),destination,{recursive:true});
+await writeFile(new URL('config.js', destination),config);
+console.log('Frontend compilado en frontend/dist/');
