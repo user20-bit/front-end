@@ -8,22 +8,20 @@
   <link rel="stylesheet" href="./style.css">
 </head>
 <body>
-  <aside class="sidebar">
-    <a class="brand" href="#explorar"><span class="mark" aria-hidden="true">◉</span><span>Radar Público<small>CONTRATACIÓN PÚBLICA</small></span></a>
-    <nav aria-label="Navegación principal">
-      <span class="nav-label">ESPACIO DE TRABAJO</span>
-      <a href="#explorar" data-page="explorar"><span aria-hidden="true">⌕</span> Convocatorias</a>
-      <a href="#guardadas" data-page="guardadas"><span aria-hidden="true">☆</span> Guardadas</a>
-      <a href="#perfil" data-page="perfil"><span aria-hidden="true">▤</span> Perfil de empresa</a>
-      <a href="#alertas" data-page="alertas"><span aria-hidden="true">◷</span> Alertas</a>
-    </nav>
-    <div class="sidebar-bottom"><strong>Fuentes oficiales</strong><a href="https://www.gob.pe/oece" target="_blank" rel="noopener">Portal del OECE ↗</a></div>
-  </aside>
-  <div class="workspace">
-    <header class="topbar"><span>Espacio de trabajo <span class="divider">/</span> <strong id="breadcrumb">Convocatorias</strong></span><span class="demo"><i></i> Modo demostración</span></header>
-    <main id="main"></main>
-    <footer>Radar Público <span>Contratación pública en Perú</span></footer>
-  </div>
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="brand" href="#explorar"><span class="mark" aria-hidden="true"></span><span>Radar Público<small>Contratación pública en Perú</small></span></a>
+      <nav aria-label="Navegación principal">
+        <a href="#explorar" data-page="explorar">Convocatorias</a>
+        <a href="#guardadas" data-page="guardadas">Guardadas</a>
+        <a href="#perfil" data-page="perfil">Perfil de empresa</a>
+        <a href="#alertas" data-page="alertas">Alertas</a>
+      </nav>
+    </div>
+  </header>
+  <div class="topbar"><span>Radar Público <span class="divider" aria-hidden="true">/</span> <strong id="breadcrumb">Convocatorias</strong></span><span class="demo">Modo demostración</span></div>
+  <main id="main"></main>
+  <footer><strong>Radar Público</strong><a href="https://www.gob.pe/oece" target="_blank" rel="noopener">Consultar el portal del OECE</a></footer>
   <script type="module" src="./app.js"></script>
 </body>
 </html>

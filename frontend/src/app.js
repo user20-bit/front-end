@@ -42,17 +42,27 @@ function task(form,action) {
 
 const filters = {q:'',region:'',category:''};
 let navigation = 0;
+const steps = [
+  {id:'bases',label:'Bases y evidencias',render:review},
+  {id:'costos',label:'Costos',render:estimate},
+  {id:'antecedentes',label:'Antecedentes',render:history},
+  {id:'oferta',label:'Oferta',render:draft},
+];
+const detailLink = (id,step) => `#convocatoria/${encodeURIComponent(id)}/${step}`;
 
 function cards(items) {
   const saved = get('saved',[]);
-  return items.map(item => `<article class="card"><div class="card-top"><span class="chip">${escape(item.category)}</span><button class="icon-button" type="button" data-save="${escape(item.id)}" aria-pressed="${saved.includes(item.id)}" aria-label="Guardar ${escape(item.title)}">${saved.includes(item.id) ? '★' : '☆'}</button></div><h3>${escape(item.title)}</h3><p class="muted">${escape(item.entity)} · ${escape(item.region)}</p><div class="card-bottom"><div><strong>${money(item.budget)}</strong><br><small class="muted">Cierre ${date(item.deadline)}</small></div><a class="button" href="#convocatoria/${escape(item.id)}">Ver expediente</a></div></article>`).join('');
+  return items.map(item => {
+    const lastStep = steps.find(step => step.id === get(`step:${item.id}`,null));
+    return `<article class="card"><div class="card-top"><span class="chip">${escape(item.category)}</span><button class="icon-button" type="button" data-save="${escape(item.id)}" aria-pressed="${saved.includes(item.id)}" aria-label="Guardar ${escape(item.title)}">${saved.includes(item.id) ? '★' : '☆'}</button></div><h3>${escape(item.title)}</h3><p class="muted">${escape(item.entity)} · ${escape(item.region)}</p><div class="card-bottom"><div><strong>${money(item.budget)}</strong><br><small class="muted">Cierre ${date(item.deadline)}</small></div><a class="button" href="${detailLink(item.id,lastStep?.id || 'bases')}">${lastStep ? `Retomar ${lastStep.label.toLowerCase()}` : 'Ver expediente'}</a></div></article>`;
+  }).join('');
 }
 
 async function list(page,current) {
   const exploring = page === 'explorar';
-  main.innerHTML = `${exploring ? `<section class="hero"><p class="eyebrow">OBSERVATORIO DE CONTRATACIÓN PÚBLICA</p><h1>Encuentra tu próxima<br>oportunidad pública</h1><p>Explora convocatorias en Perú, revisa las bases y prepara la evidencia que necesita tu empresa para postular.</p></section><div class="stats" id="stats"></div>` : '<h1>Convocatorias guardadas</h1>'}
-  <section aria-labelledby="listing"><div class="section-head"><h2 id="listing">${exploring ? 'Explorar convocatorias' : 'Tu selección'}</h2><span id="count"></span></div>
-  <form class="filters" id="filters" ${exploring ? '' : 'hidden'}><input name="q" aria-label="Buscar convocatorias" placeholder="Buscar por servicio o entidad">${select('region','Todas las regiones',['Arequipa','Cusco','La Libertad','Lima'])}${select('category','Todos los rubros',['Consultoría','Limpieza','Seguridad','Tecnología'])}<button type="submit" class="button primary">Buscar</button></form>
+  main.innerHTML = `${exploring ? `<section class="portal"><div class="hero"><p class="eyebrow">Contratación pública</p><h1>Consulta convocatorias y prepara tu oferta</h1><p>Encuentra oportunidades para tu empresa. Revisa las bases, estima tus costos y prepara un borrador desde el expediente.</p></div>` : '<h1>Convocatorias guardadas</h1>'}
+  <form class="filters" id="filters" ${exploring ? '' : 'hidden'}><h2>Buscar convocatorias</h2><label>Servicio o entidad<input name="q" placeholder="Ej. limpieza o municipalidad"></label><div class="filter-row"><label>Región${select('region','Todas las regiones',['Arequipa','Cusco','La Libertad','Lima'])}</label><label>Rubro${select('category','Todos los rubros',['Consultoría','Limpieza','Seguridad','Tecnología'])}</label></div><button type="submit" class="button primary">Buscar convocatorias</button></form>${exploring ? '</section>' : ''}
+  <section class="results" aria-labelledby="listing"><div class="section-head"><h2 id="listing" tabindex="-1">${exploring ? 'Resultados de la consulta' : 'Tu selección'}</h2><span id="count"></span></div>
   <p id="list-status" role="status">Cargando convocatorias…</p><div class="cards" id="cards"></div></section>`;
   const form = main.querySelector('#filters');
   const status = main.querySelector('#list-status');
@@ -67,7 +77,6 @@ async function list(page,current) {
     grid.innerHTML = cards(visible);
     main.querySelector('#count').textContent = `${visible.length} ${visible.length === 1 ? 'resultado' : 'resultados'}`;
     message(status,visible.length ? '' : exploring ? 'No hay convocatorias con esos filtros.' : 'Todavía no tienes convocatorias guardadas.');
-    if (exploring) main.querySelector('#stats').innerHTML = [[all.length,'Convocatorias','▤'],[new Set(all.map(item => item.region)).size,'Regiones','◎'],[saved.length,'Guardadas','☆']].map(([count,label,icon]) => `<div class="stat"><span class="tile-icon" aria-hidden="true">${icon}</span><div><b>${count}</b><small>${label}</small></div></div>`).join('');
   };
   async function load() {
     const attempt = ++request;
@@ -86,7 +95,9 @@ async function list(page,current) {
   form.addEventListener('submit',event => {
     event.preventDefault();
     Object.assign(filters,Object.fromEntries(new FormData(form)));
-    load();
+    load().then(() => {
+      if (current === navigation) main.querySelector('#listing').focus();
+    });
   });
   grid.addEventListener('click',event => {
     const button = event.target.closest('[data-save]');
@@ -157,24 +168,26 @@ function estimate(item,panel) {
     });
     const result = await api('/estimate',{lines:entries});
     set(key,entries);
+    set(`${key}:summary`,{total:result.total,pending:result.pending});
     message(output,[`Total cotizado: ${money(result.total)} · ${result.pending} sin cotizar`,...result.lines.map(line => `${line.name}: ${line.subtotal === null ? 'Pendiente' : money(line.subtotal)}`)].join('\n'));
   });
 }
 
 function history(item,panel) {
   const data = item.history;
-  panel.innerHTML = `<h2>Antecedente comparable</h2><p><strong>${escape(data.winner)}</strong> · ${data.bidders} postores</p><p>${money(data.amount)} · ${data.months} meses · ${data.sites} sedes</p><p>${escape(data.evaluation)}</p><p class="muted">${escape(data.source)}. El monto histórico es una referencia de comparación.</p>`;
+  const estimate = get(`costs:${item.id}:summary`,null);
+  panel.innerHTML = `<h2>Antecedente comparable</h2><p><strong>${escape(data.winner)}</strong> · ${data.bidders} postores</p><p><strong>Monto adjudicado:</strong> ${money(data.amount)} · ${data.months} meses · ${data.sites} sedes</p>${estimate ? `<p><strong>Tu costo cotizado:</strong> ${money(estimate.total)}${estimate.pending ? ` · ${estimate.pending} partidas sin cotizar` : ''}</p>` : ''}<p>${escape(data.evaluation)}</p><p class="muted">${escape(data.source)}. El monto histórico es una referencia de comparación.</p>`;
 }
 
 function draft(item,panel) {
   panel.innerHTML = '<h2>Borrador de oferta</h2><p class="muted">Usa el perfil y las evidencias registradas en esta convocatoria.</p><form><button type="submit" class="button primary">Generar borrador</button><div class="feedback" role="status"></div></form><div class="stack" id="draft-output"></div>';
   const area = panel.querySelector('#draft-output');
-  task(panel.querySelector('form'),async (_,output) => {
-    const result = await api(`/opportunities/${item.id}/draft`,{profile:get('perfil',{}),evidence:get(`evidence:${item.id}`,{})});
-    if (!area.isConnected) return;
+  const key = `draft:${item.id}`;
+  function showEditor(text) {
     area.innerHTML = '<label>Texto del borrador<textarea rows="12"></textarea></label><div><button type="button" class="button">Descargar texto</button></div>';
     const editor = area.querySelector('textarea');
-    editor.value = result.text;
+    editor.value = text;
+    editor.addEventListener('input',() => set(key,editor.value));
     area.querySelector('button').onclick = () => {
       const url = URL.createObjectURL(new Blob([editor.value],{type:'text/plain;charset=utf-8'}));
       const link = document.createElement('a');
@@ -183,45 +196,68 @@ function draft(item,panel) {
       link.click();
       setTimeout(() => URL.revokeObjectURL(url),1000);
     };
-    message(output,'Borrador generado. Puedes editarlo antes de descargarlo.');
+  }
+  const saved = get(key,null);
+  if (saved !== null) showEditor(saved);
+  const form = panel.querySelector('form');
+  const generate = form.querySelector('button');
+  if (saved !== null) generate.textContent = 'Reemplazar con un borrador nuevo';
+  task(form,async (_,output) => {
+    const result = await api(`/opportunities/${item.id}/draft`,{profile:get('perfil',{}),evidence:get(`evidence:${item.id}`,{})});
+    if (!area.isConnected) return;
+    set(key,result.text);
+    showEditor(result.text);
+    generate.textContent = 'Reemplazar con un borrador nuevo';
+    message(output,'Borrador generado. Los cambios se guardan en este navegador.');
+    area.querySelector('textarea').focus();
   });
 }
 
-async function detail(id,current) {
-  main.innerHTML = '<a href="#explorar" class="back">Volver a convocatorias</a><p role="status">Cargando expediente…</p>';
-  const item = await api(`/opportunities/${encodeURIComponent(id)}`);
-  if (current !== navigation) return;
-  main.innerHTML = `<a href="#explorar" class="back">Volver a convocatorias</a><section class="hero"><p class="eyebrow">${escape(item.id)} · ${escape(item.category.toUpperCase())}</p><h1>${escape(item.title)}</h1><p>${escape(item.entity)} · ${escape(item.region)} · Cierre ${date(item.deadline)}</p></section><div class="tabs" aria-label="Secciones del expediente"></div><section class="panel" id="detail-panel"></section>`;
-  const tabs = main.querySelector('.tabs');
-  const panel = main.querySelector('#detail-panel');
-  for (const [label,render] of [['Bases y evidencias',review],['Costos',estimate],['Antecedentes',history],['Oferta',draft]]) {
-    const button = document.createElement('button');
-    button.className = 'button';
-    button.textContent = label;
-    button.setAttribute('aria-pressed','false');
-    button.onclick = () => {
-      for (const tab of tabs.children) tab.setAttribute('aria-pressed',String(tab === button));
-      render(item,panel);
-    };
-    tabs.append(button);
+let openItem;
+async function detail(id,stepId,current) {
+  const sameItem = openItem?.id === id;
+  if (!sameItem) {
+    openItem = undefined;
+    main.innerHTML = '<a href="#explorar" class="back">Volver a convocatorias</a><p role="status">Cargando expediente…</p>';
+    const item = await api(`/opportunities/${encodeURIComponent(id)}`);
+    if (current !== navigation) return;
+    openItem = item;
+    main.innerHTML = `<a href="#explorar" class="back">Volver a convocatorias</a><section class="detail-heading"><p class="eyebrow">Expediente ${escape(item.id)} · ${escape(item.category)}</p><h1>${escape(item.title)}</h1><p>${escape(item.entity)} · ${escape(item.region)} · Cierre ${date(item.deadline)}</p></section><nav class="step-nav" aria-label="Etapas del expediente"></nav><section class="panel" id="detail-panel"></section>`;
   }
-  tabs.firstElementChild.click();
+  const item = openItem;
+  const step = steps.find(entry => entry.id === stepId) || steps[0];
+  const index = steps.indexOf(step);
+  set(`step:${item.id}`,step.id);
+  main.querySelector('.step-nav').innerHTML = steps.map((entry,i) => `<a href="${detailLink(item.id,entry.id)}" ${entry === step ? 'aria-current="step"' : ''}><span>${i + 1}</span>${entry.label}</a>`).join('');
+  const panel = main.querySelector('#detail-panel');
+  step.render(item,panel);
+  const previous = steps[index - 1];
+  const next = steps[index + 1];
+  panel.insertAdjacentHTML('beforeend',`<div class="step-actions">${previous ? `<a class="button" href="${detailLink(item.id,previous.id)}">Volver a ${previous.label.toLowerCase()}</a>` : '<span></span>'}${next ? `<a class="button primary" href="${detailLink(item.id,next.id)}">Continuar a ${next.label.toLowerCase()}</a>` : '<a class="button" href="#explorar">Volver a convocatorias</a>'}</div>`);
+  if (sameItem) {
+    const heading = panel.querySelector('h2');
+    heading.tabIndex = -1;
+    heading.focus();
+  }
 }
 
 async function route() {
   const current = ++navigation;
-  const [page,id] = location.hash.slice(1).split('/');
+  const [page,id,step] = location.hash.slice(1).split('/');
   const active = Object.hasOwn(labels,page) ? page : 'explorar';
   document.querySelector('#breadcrumb').textContent = page === 'convocatoria' ? 'Expediente' : labels[active];
   document.querySelectorAll('[data-page]').forEach(link => {
     if (link.dataset.page === active) link.setAttribute('aria-current','page');
     else link.removeAttribute('aria-current');
   });
-  window.scrollTo(0,0);
+  if (page !== 'convocatoria' || openItem?.id !== id) window.scrollTo(0,0);
   try {
-    if (page === 'convocatoria' && id) await detail(id,current);
-    else if (active === 'perfil' || active === 'alertas') settings(active);
-    else await list(active,current);
+    if (page === 'convocatoria' && id) await detail(id,step,current);
+    else {
+      openItem = undefined;
+      if (active === 'perfil' || active === 'alertas') settings(active);
+      else await list(active,current);
+    }
   } catch (error) {
     if (current === navigation) main.innerHTML = `<p class="error" role="status">${escape(error.message)}</p><a class="back" href="#explorar">Volver a convocatorias</a>`;
   }
